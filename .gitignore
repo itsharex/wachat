@@ -56,3 +56,6 @@ yarn-error.log*
 *.db
 *.sqlite
 *.sqlite3
+
+# Configuration files (use config.example.yaml as template)
+config.yaml

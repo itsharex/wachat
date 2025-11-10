@@ -14,17 +14,22 @@ wachat 是一个使用 Wails (Go + Web) 构建的跨平台 AI 聊天桌面应用
 wachat/
 ├── backend/              # Go 后端 - 严格分层架构
 │   ├── api.go           # API Facade - 统一对外接口
-│   ├── config/          # 配置层 - 环境变量读取
+│   ├── config/          # 配置层 - YAML 配置读取
 │   ├── database/        # 数据库层 - SQLite 连接和迁移
 │   ├── model/           # 模型层 - 数据结构定义
 │   ├── repository/      # Repository 层 - 数据访问抽象
 │   └── service/         # Service 层 - 业务逻辑
+│       ├── ai.go        # AI 服务
+│       ├── chat.go      # 聊天服务
+│       └── binary_manager.go  # 二进制管理服务
 ├── frontend/            # Vue 3 前端 - Composition API
 │   ├── src/
 │   │   ├── components/  # UI 组件（单一职责）
 │   │   ├── composables/ # 可复用逻辑
 │   │   ├── views/       # 页面视图
 │   │   └── wailsjs/     # Wails 自动生成的绑定（不要手动修改）
+├── bin/                 # 嵌入的二进制文件（qdrant等）
+├── config.yaml          # 配置文件（从 config.example.yaml 复制）
 ├── main.go              # Wails 应用入口
 └── app.go               # 应用主逻辑 - 连接前后端
 ```
@@ -34,13 +39,14 @@ wachat/
 ### 后端分层
 
 **各层职责**:
-- `app.go`: Wails 生命周期管理，前端方法绑定，事件发送
+- `app.go`: Wails 生命周期管理，前端方法绑定，事件发送，*请不要在这里写复杂的业务逻辑*
 - `api.go`: API 外观层，初始化各层依赖，提供统一接口
 - `service/`: 业务逻辑，不直接访问数据库
+  - `binary_manager.go`: 管理嵌入的二进制文件（qdrant等）
 - `repository/`: 数据访问，GORM 操作封装
 - `database/`: 数据库连接、迁移
 - `model/`: 数据结构（DB 模型 + 业务模型）
-- `config/`: 环境变量配置读取
+- `config/`: YAML 配置读取和管理（使用 Viper）
 
 ### 前端组件化
 
@@ -138,6 +144,50 @@ wachat/
 1. 修改 `model/types.go` 中的结构体
 2. GORM 会在下次启动时自动迁移
 3. 如需手动迁移，修改 `database/database.go` 的 `AutoMigrate` 调用
+
+### 配置管理流程
+
+**初始化配置**:
+1. 复制 `config.example.yaml` 为 `config.yaml`
+2. 修改 `config.yaml` 中的配置项（AI API、数据库路径等）
+3. 配置文件会被 `.gitignore` 忽略，不会提交到版本控制
+
+**配置文件搜索顺序**:
+1. `WACHAT_CONFIG_PATH` 环境变量指定的目录
+2. 当前工作目录
+3. 当前工作目录向上查找的项目根目录（通过 go.mod 定位）
+4. 可执行文件所在目录
+5. 可执行文件向上查找的项目根目录
+6. 用户配置目录 `~/.config/wachat`
+
+**开发模式配置**:
+```bash
+# 如果 wails dev 找不到配置文件，设置环境变量
+export WACHAT_CONFIG_PATH=$(pwd)
+wails dev
+```
+
+**配置结构**:
+```yaml
+ai:
+  base_url: "https://api.openai.com/v1"
+  api_key: "your-api-key"
+  model: "gpt-3.5-turbo"
+
+binaries:
+  enabled: true
+  use_embedded: false
+  bin_path: "./bin"
+  startup_order:
+    - qdrant
+    - wailsproject
+```
+
+**添加新配置项**:
+1. 在 `backend/config/config.go` 中添加对应的结构体字段
+2. 在 `config.Load()` 函数中设置默认值
+3. 更新 `config.yaml` 和 `config.example.yaml`
+4. 使用 `config.Get()` 获取配置
 
 ### 事件通信
 
@@ -259,6 +309,39 @@ wails build -platform darwin/amd64  # 指定平台
 1. 修改 `model/types.go` 的结构体定义
 2. 重启应用（GORM 自动迁移）
 3. 更新相关的 Repository 方法
+
+### 修改配置
+1. 编辑 `config.yaml` 修改配置值
+2. 如需添加新配置项：编辑 `backend/config/config.go`
+3. 重启应用使配置生效
+
+### 添加二进制文件
+
+**本地模式**（推荐，更灵活）:
+1. 将二进制文件放入 `bin/` 目录
+2. 在 `config.yaml` 中设置：
+   ```yaml
+   binaries:
+     enabled: true
+     use_embedded: false
+     bin_path: "./bin"
+     startup_order:
+       - your-binary
+   ```
+3. 无需重新编译，直接运行
+
+**嵌入模式**（适合打包分发）:
+1. 将二进制文件放入 `bin/` 目录
+2. 在 `config.yaml` 中设置：
+   ```yaml
+   binaries:
+     enabled: true
+     use_embedded: true
+     startup_order:
+       - your-binary
+   ```
+3. 重新编译：`wails build`
+4. 二进制会被打包到应用中（增加应用体积）
 
 ## 注意事项
 

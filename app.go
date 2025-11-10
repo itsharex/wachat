@@ -2,28 +2,44 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"log"
 
 	"github.com/wangle201210/wachat/backend"
+	"github.com/wangle201210/wachat/backend/config"
 	"github.com/wangle201210/wachat/backend/model"
+	"github.com/wangle201210/wachat/backend/service"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+//go:embed bin/*
+var binaries embed.FS
+
 // App struct
 type App struct {
-	ctx     context.Context
-	chatAPI *backend.API
+	ctx           context.Context
+	chatAPI       *backend.API
+	binaryManager *service.BinaryManager
 }
 
 // NewApp creates new App
-func NewApp() *App {
+func NewApp(cfg *config.Config) *App {
 	api, err := backend.NewAPI()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize API: %v", err))
 	}
+
+	// Create binary manager from config
+	binaryManager, err := service.NewBinaryManagerFromConfig(cfg.Binaries, binaries)
+	if err != nil {
+		log.Printf("Binary manager: %v", err)
+	}
+
 	return &App{
-		chatAPI: api,
+		chatAPI:       api,
+		binaryManager: binaryManager,
 	}
 }
 
@@ -31,6 +47,21 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.chatAPI.SetContext(ctx)
+
+	// Start all embedded binaries
+	if a.binaryManager != nil {
+		if err := a.binaryManager.StartAll(ctx); err != nil {
+			log.Printf("Warning: Failed to start binaries: %v", err)
+		}
+	}
+}
+
+// shutdown is called when app stops
+func (a *App) shutdown(ctx context.Context) {
+	// Cleanup managed binaries
+	if a.binaryManager != nil {
+		a.binaryManager.Cleanup()
+	}
 }
 
 // CreateConversation creates new conversation

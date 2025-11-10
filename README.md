@@ -68,27 +68,38 @@ pnpm install
 cd ..
 ```
 
-### 3. 配置环境变量
+### 3. 配置应用
 
-创建 `.env` 文件:
+创建配置文件:
 
 ```bash
-cp .env.example .env
+cp config.example.yaml config.yaml
 ```
 
-编辑 `.env` 文件配置您的 API 密钥:
+编辑 `config.yaml` 配置您的 AI 服务:
 
-```env
-# OpenAI API 配置
-OPENAI_API_KEY=your_api_key_here
-OPENAI_API_URL=https://api.openai.com/v1/chat/completions
-OPENAI_MODEL=gpt-4o-mini
+```yaml
+# AI Service Configuration
+ai:
+  base_url: "https://api.openai.com/v1"
+  api_key: "your-api-key-here"
+  model: "gpt-3.5-turbo"
+
+# Binary Manager Configuration (Optional)
+binaries:
+  enabled: true
+  use_embedded: false  # false: use local bin/, true: use embedded
+  bin_path: "./bin"
+  startup_order:
+    - qdrant
+    - wailsproject
 ```
 
 > 💡 提示：
 > - 支持 OpenAI 官方 API
-> - 支持其他兼容 OpenAI API 的服务（如 Ollama、LocalAI 等）
-> - 如不配置，应用将无法正常使用
+> - 支持其他兼容 OpenAI API 的服务（如 Ollama、Azure OpenAI 等）
+> - 配置文件使用 YAML 格式，更易于管理和维护
+> - 可以通过设置 `binaries.enabled: false` 禁用嵌入的二进制服务
 
 ### 4. 开发模式
 
@@ -96,6 +107,12 @@ OPENAI_MODEL=gpt-4o-mini
 # 启动开发服务器（热重载）
 wails dev
 ```
+
+> 💡 提示：如果遇到配置文件加载问题，可以设置环境变量：
+> ```bash
+> export WACHAT_CONFIG_PATH=/path/to/your/project
+> wails dev
+> ```
 
 ### 5. 构建应用
 
@@ -173,16 +190,26 @@ wails build -platform linux/amd64    # Linux
 
 ### Q: 如何更换 AI 服务提供商？
 
-A: 修改 `.env` 文件中的配置：
+A: 修改 `config.yaml` 文件中的配置：
 
-```env
+```yaml
 # 使用 Ollama 本地模型
-OPENAI_API_URL=http://localhost:11434/v1/chat/completions
-OPENAI_MODEL=llama2
+ai:
+  base_url: "http://localhost:11434/v1/chat/completions"
+  api_key: ""
+  model: "llama2"
 
 # 使用 Azure OpenAI
-OPENAI_API_URL=https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions?api-version=2024-02-15-preview
-OPENAI_API_KEY=your_azure_key
+ai:
+  base_url: "https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions?api-version=2024-02-15-preview"
+  api_key: "your-azure-key"
+  model: "gpt-35-turbo"
+
+# 使用 SiliconFlow (DeepSeek)
+ai:
+  base_url: "https://api.siliconflow.cn/v1"
+  api_key: "sk-your-key-here"
+  model: "deepseek-ai/DeepSeek-V3"
 ```
 
 ### Q: 如何清空所有对话？

@@ -1,0 +1,56 @@
+# wachat Configuration Example
+# Copy this file to config.yaml and modify as needed
+#
+# Configuration File Loading:
+# The application searches for config.yaml in the following order:
+# 1. Directory specified by WACHAT_CONFIG_PATH environment variable
+# 2. Current working directory
+# 3. Project root (found by searching for go.mod)
+# 4. Executable directory
+# 5. User config directory (~/.config/wachat)
+#
+# For development mode:
+#   export WACHAT_CONFIG_PATH=$(pwd)
+#   wails dev
+
+# AI Service Configuration
+ai:
+  base_url: "https://api.openai.com/v1"
+  api_key: "your-api-key-here"
+  model: "gpt-3.5-turbo"
+
+  # Examples for different providers:
+
+  # SiliconFlow (DeepSeek)
+  # base_url: "https://api.siliconflow.cn/v1"
+  # api_key: "sk-your-key-here"
+  # model: "deepseek-ai/DeepSeek-V3"
+
+  # Azure OpenAI
+  # base_url: "https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions?api-version=2024-02-15-preview"
+  # api_key: "your-azure-key"
+  # model: "gpt-35-turbo"
+
+  # Local LLM (Ollama, etc.)
+  # base_url: "http://localhost:11434/v1/chat/completions"
+  # api_key: ""
+  # model: "llama2"
+
+# Binary Manager Configuration
+binaries:
+  enabled: true
+
+  # Use embedded binaries (true) or local bin/ directory (false)
+  # Embedded mode: binaries are packed into the application (larger app size)
+  # Local mode: binaries are loaded from bin_path directory (flexible, smaller app)
+  use_embedded: false
+
+  # Path to local binaries directory (only used when use_embedded is false)
+  # Can be absolute or relative path. Default: "./bin"
+  bin_path: "./bin"
+
+  # Define the startup order of binaries
+  # The application will start these binaries in the specified order
+  startup_order:
+    - qdrant
+    - wailsproject
